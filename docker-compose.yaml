@@ -1,0 +1,17 @@
+services:
+  controlplane:
+    build:
+      context: .
+      args:
+        BIN_NAME: mtccontrolplane
+        APP_PORT: 8000
+    ports:
+      - "8000:3000"
+  worker:
+    build:
+      context: .
+      args:
+        BIN_NAME: mtcworker
+        APP_PORT: 8001
+    ports:
+      - "8001:4000"
