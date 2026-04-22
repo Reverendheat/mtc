@@ -189,7 +189,7 @@ fn spawn_reaper(state: AppState) {
 
             for node in nodes.values_mut() {
                 if now.duration_since(node.last_heartbeat) > std::time::Duration::from_secs(10) {
-                    info!(
+                    warn!(
                         "Node '{}' is stale. Last heartbeat was at {:?}. Marking as stale.",
                         node.name, node.last_heartbeat
                     );

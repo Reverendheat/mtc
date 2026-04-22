@@ -1,17 +1,24 @@
 services:
   controlplane:
+    environment:
+      - APP_PORT=3000
     build:
       context: .
       args:
         BIN_NAME: mtccontrolplane
-        APP_PORT: 8000
+        APP_PORT: 3000
     ports:
       - "8000:3000"
   worker:
+    environment:
+      - CONTROL_PLANE_URL=http://controlplane:3000
+      - APP_PORT=4000
+    depends_on:
+      - controlplane
     build:
       context: .
       args:
         BIN_NAME: mtcworker
-        APP_PORT: 8001
+        APP_PORT: 4000
     ports:
       - "8001:4000"

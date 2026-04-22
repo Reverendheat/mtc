@@ -1,6 +1,9 @@
+mod settings;
+
 use axum::{Router, routing::get};
 use common::NodeId;
 use reqwest::Client;
+use settings::Settings;
 
 async fn spawn_heartbeat(client: Client, node_id: NodeId) {
     let node_id = node_id.clone();
@@ -24,18 +27,13 @@ async fn spawn_heartbeat(client: Client, node_id: NodeId) {
 #[tokio::main]
 async fn main() {
     // get the port from the command line arguments
-    let args = std::env::args().collect::<Vec<String>>();
-    let port = if args.len() > 1 {
-        args[1].parse::<u16>().unwrap_or(4000)
-    } else {
-        3000
-    };
+    let settings: Settings = Settings::new();
 
     let client = Client::new();
     let node_id = NodeId::new("worker-node-1");
-    let control_plane_url = "http://controlplane:3000";
+
     client
-        .post(format!("{}/workers/register", control_plane_url))
+        .post(format!("{}/workers/register", settings.control_plane_url))
         .query(&[("node_id", node_id.as_str())])
         .send()
         .await
@@ -43,11 +41,14 @@ async fn main() {
         .error_for_status()
         .unwrap();
 
-    spawn_heartbeat(client.clone(), node_id).await;
+    spawn_heartbeat(client.clone(), node_id.clone()).await;
 
-    let app = Router::new().route("/", get(|| async { "Worker Node" }));
+    let app = Router::new().route(
+        "/",
+        get(|| async move { format!("Worker Node {}", node_id) }),
+    );
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", settings.app_port))
         .await
         .unwrap();
 
