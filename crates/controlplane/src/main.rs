@@ -1,3 +1,5 @@
+mod settings;
+
 use axum::{
     Router,
     extract::{Query, State},
@@ -6,6 +8,7 @@ use axum::{
 use common::{Machine, MachineId, Node, NodeId, NodeState};
 use rand::seq::IteratorRandom;
 use serde::Deserialize;
+use settings::Settings;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
@@ -203,6 +206,8 @@ fn spawn_reaper(state: AppState) {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
+
+    let settings: Settings = Settings::new();
     let machine_state: MachineStore = Arc::new(Mutex::new(HashMap::new()));
     let node_state: NodeStore = Arc::new(Mutex::new(HashMap::new()));
 
@@ -223,7 +228,9 @@ async fn main() {
         .with_state(state);
 
     info!("Starting MTC Controlplane on port 3000");
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", settings.app_port))
+        .await
+        .unwrap();
 
     axum::serve(listener, app).await.unwrap();
 }
