@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, time::Instant};
+use std::fmt::Display;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -65,7 +65,7 @@ impl Display for Machine {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeState {
     Pending,
     Running,
@@ -78,5 +78,5 @@ pub struct Node {
     pub id: NodeId,
     pub name: String,
     pub state: NodeState,
-    pub last_heartbeat: Instant,
+    pub last_heartbeat: tokio::time::Instant,
 }
