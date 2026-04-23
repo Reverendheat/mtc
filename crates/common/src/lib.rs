@@ -78,5 +78,13 @@ pub struct Node {
     pub id: NodeId,
     pub name: String,
     pub state: NodeState,
+    pub cordoned: bool,
+    pub draining: bool,
     pub last_heartbeat: tokio::time::Instant,
+}
+
+impl Node {
+    pub fn is_schedulable(&self) -> bool {
+        self.state == NodeState::Running && !self.cordoned && !self.draining
+    }
 }

@@ -44,6 +44,8 @@ mod tests {
                     name: "n1".into(),
                     last_heartbeat: tokio::time::Instant::now(),
                     state: NodeState::Running,
+                    cordoned: false,
+                    draining: false,
                 },
             );
         }

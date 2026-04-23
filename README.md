@@ -27,6 +27,7 @@ Things being explored right now:
 - worker registration
 - worker heartbeats
 - in-memory node and machine state
+- node cordon / drain lifecycle
 - basic CLI shape
 
 Things that are **not** done yet:
@@ -34,10 +35,22 @@ Things that are **not** done yet:
 - real process launching
 - durable state
 - machine reconciliation
-- cordon / drain behavior
 - scheduling beyond simple/random assignment
 - robust error handling
 - polished CLI output
+
+## Node lifecycle
+
+Workers can now be marked as:
+
+- `cordoned` — the node stays registered and heartbeating, but it will not receive new machine assignments
+- `draining` — the node is cordoned and waiting for its existing machine assignments to reach zero
+
+In the current in-memory implementation:
+
+- the scheduler only places new machines on running nodes that are neither cordoned nor draining
+- heartbeats refresh node liveness without clearing `cordoned` or `draining`
+- when the last machine is removed from a draining node, the node stays cordoned and exits draining
 
 ## Workspace layout
 
