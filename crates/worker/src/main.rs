@@ -1,31 +1,13 @@
+mod background;
 mod settings;
 
+use crate::background::spawn_heartbeat;
 use axum::{Router, routing::get};
 use common::NodeId;
 use reqwest::Client;
 use settings::Settings;
-use tracing::{debug, info};
+use tracing::info;
 use tracing_subscriber;
-
-async fn spawn_heartbeat(client: Client, node_id: NodeId, control_plane: String) {
-    let node_id = node_id.clone();
-    tokio::spawn(async move {
-        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(5));
-
-        loop {
-            ticker.tick().await;
-            debug!("Sending heartbeat for node '{}'", node_id.as_str());
-            client
-                .post(format!("{}/workers/heartbeat", control_plane))
-                .query(&[("node_id", node_id.as_str())])
-                .send()
-                .await
-                .unwrap()
-                .error_for_status()
-                .unwrap();
-        }
-    });
-}
 
 #[tokio::main]
 async fn main() {
@@ -45,7 +27,11 @@ async fn main() {
         .error_for_status()
         .unwrap();
 
-    spawn_heartbeat(client.clone(), node_id.clone(), settings.control_plane_url).await;
+    let _heartbeat = spawn_heartbeat(
+        client.clone(),
+        node_id.clone(),
+        settings.control_plane_url.clone(),
+    );
 
     let app = Router::new().route(
         "/",

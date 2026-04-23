@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
         nodes: Default::default(),
     };
     let app = router::app_router(state.clone());
-    spawn_reaper(state.clone());
+    let _reaper = spawn_reaper(state.clone());
 
     info!("Starting MTC Controlplane on port 3000");
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", settings.app_port))
