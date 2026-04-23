@@ -77,7 +77,8 @@ pub enum NodeState {
 pub struct Node {
     pub id: NodeId,
     pub name: String,
-    pub state: NodeState,
+    pub observed_state: NodeState,
+    pub desired_state: NodeState,
     pub cordoned: bool,
     pub draining: bool,
     pub last_heartbeat: tokio::time::Instant,
@@ -85,6 +86,9 @@ pub struct Node {
 
 impl Node {
     pub fn is_schedulable(&self) -> bool {
-        self.state == NodeState::Running && !self.cordoned && !self.draining
+        self.observed_state == NodeState::Running
+            && self.desired_state == NodeState::Running
+            && !self.cordoned
+            && !self.draining
     }
 }

@@ -166,7 +166,8 @@ mod tests {
                 Node {
                     id: node_id,
                     name: "n1".into(),
-                    state: NodeState::Running,
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
                     cordoned: true,
                     draining: false,
                     last_heartbeat: tokio::time::Instant::now(),
@@ -204,7 +205,8 @@ mod tests {
                 Node {
                     id: node_id.clone(),
                     name: "n1".into(),
-                    state: NodeState::Running,
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
                     cordoned: true,
                     draining: true,
                     last_heartbeat: tokio::time::Instant::now(),

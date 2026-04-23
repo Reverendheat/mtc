@@ -28,7 +28,8 @@ async fn register_handler(
         let node = Node {
             id: params.node_id.clone(),
             name: format!("Node-{}", params.node_id.as_str()),
-            state: NodeState::Running,
+            observed_state: NodeState::Running,
+            desired_state: NodeState::Running,
             cordoned: false,
             draining: false,
             last_heartbeat: tokio::time::Instant::now(),
@@ -52,8 +53,11 @@ async fn heartbeat_handler(
 
     if let Some(node) = nodes.get_mut(&params.node_id) {
         node.last_heartbeat = tokio::time::Instant::now();
-        if matches!(node.state, NodeState::Stale | NodeState::Timeout | NodeState::Pending) {
-            node.state = NodeState::Running;
+        if matches!(
+            node.observed_state,
+            NodeState::Stale | NodeState::Timeout | NodeState::Pending
+        ) {
+            node.observed_state = NodeState::Running;
         }
         "Heartbeat received"
     } else {
@@ -150,7 +154,8 @@ mod tests {
                 Node {
                     id: node_id.clone(),
                     name: "n1".into(),
-                    state: NodeState::Stale,
+                    observed_state: NodeState::Stale,
+                    desired_state: NodeState::Running,
                     cordoned: true,
                     draining: true,
                     last_heartbeat: tokio::time::Instant::now(),
@@ -170,7 +175,8 @@ mod tests {
 
         let nodes = state.nodes.lock().await;
         let node = nodes.get(&node_id).unwrap();
-        assert_eq!(node.state, NodeState::Running);
+        assert_eq!(node.observed_state, NodeState::Running);
+        assert_eq!(node.desired_state, NodeState::Running);
         assert!(node.cordoned);
         assert!(node.draining);
     }
@@ -190,7 +196,8 @@ mod tests {
                 Node {
                     id: node_id.clone(),
                     name: "n1".into(),
-                    state: NodeState::Running,
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
                     cordoned: false,
                     draining: false,
                     last_heartbeat: tokio::time::Instant::now(),

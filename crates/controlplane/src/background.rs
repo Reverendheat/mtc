@@ -13,7 +13,7 @@ pub fn spawn_reaper(state: AppState) -> tokio::task::JoinHandle<()> {
 
             for node in nodes.values_mut() {
                 if now.duration_since(node.last_heartbeat) > tokio::time::Duration::from_secs(10) {
-                    node.state = NodeState::Stale;
+                    node.observed_state = NodeState::Stale;
                 }
             }
         }
@@ -43,7 +43,8 @@ mod tests {
                     id: node_id.clone(),
                     name: "n1".into(),
                     last_heartbeat: tokio::time::Instant::now(),
-                    state: NodeState::Running,
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
                     cordoned: false,
                     draining: false,
                 },
@@ -56,7 +57,9 @@ mod tests {
         tokio::task::yield_now().await;
 
         let nodes = state.nodes.lock().await;
-        assert_eq!(nodes.get(&node_id).unwrap().state, NodeState::Stale);
+        let node = nodes.get(&node_id).unwrap();
+        assert_eq!(node.observed_state, NodeState::Stale);
+        assert_eq!(node.desired_state, NodeState::Running);
 
         handle.abort();
     }

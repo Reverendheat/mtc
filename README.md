@@ -52,6 +52,11 @@ In the current in-memory implementation:
 - heartbeats refresh node liveness without clearing `cordoned` or `draining`
 - when the last machine is removed from a draining node, the node stays cordoned and exits draining
 
+Each node now also tracks:
+
+- `observed_state` — what the control plane currently believes the node is doing based on heartbeats and reaping
+- `desired_state` — what the control plane wants the node state to be
+
 ## Workspace layout
 
 ```text
