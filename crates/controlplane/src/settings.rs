@@ -1,9 +1,11 @@
 use config::{Config, Environment};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub app_port: u16,
+    pub worker_binary_path: Option<PathBuf>,
 }
 
 impl Settings {

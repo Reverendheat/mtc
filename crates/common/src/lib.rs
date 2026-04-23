@@ -65,7 +65,7 @@ impl Display for Machine {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeState {
     Pending,
     Running,

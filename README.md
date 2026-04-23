@@ -28,6 +28,7 @@ Things being explored right now:
 - worker heartbeats
 - in-memory node and machine state
 - node cordon / drain lifecycle
+- local worker launching from the control plane
 - basic CLI shape
 
 Things that are **not** done yet:
@@ -56,6 +57,25 @@ Each node now also tracks:
 
 - `observed_state` — what the control plane currently believes the node is doing based on heartbeats and reaping
 - `desired_state` — what the control plane wants the node state to be
+
+## Worker launching
+
+The control plane now has a launcher abstraction with a local-process backend.
+
+- `POST /workers/launch` starts a real `mtcworker` process
+- the control plane creates a placeholder node with `observed_state=Pending` and `desired_state=Running`
+- the worker still becomes fully active by calling the existing registration endpoint
+- Docker Compose now runs only the control plane; worker instances are expected to be launched by the control plane itself
+
+The local launcher currently passes instance specific environment to each worker:
+
+- `NODE_ID`
+- `APP_PORT`
+- `CONTROL_PLANE_URL`
+
+`CONTROL_PLANE_URL` is derived automatically from the control plane's own `APP_PORT` for the local launcher.
+
+By default, the control plane looks for the worker binary next to the control plane binary. You can override that with `WORKER_BINARY_PATH`.
 
 ## Workspace layout
 

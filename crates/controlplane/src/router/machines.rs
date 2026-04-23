@@ -27,7 +27,8 @@ struct ShowParams {
 async fn pick_random_node(state: &NodeStore) -> Option<Node> {
     let nodes = state.lock().await;
     let mut rng = rand::thread_rng();
-    nodes.values()
+    nodes
+        .values()
         .filter(|node| node.is_schedulable())
         .choose(&mut rng)
         .cloned()
@@ -148,14 +149,19 @@ pub fn machines_router() -> Router<AppState> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::launcher::NoopWorkerLauncher;
     use crate::router::state::AppState;
     use common::{MachineState, NodeId, NodeState};
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn launch_skips_unschedulable_nodes() {
         let state = AppState {
+            app_port: 3000,
             machines: Default::default(),
             nodes: Default::default(),
+            launched_workers: Default::default(),
+            launcher: Arc::new(NoopWorkerLauncher),
         };
         let node_id = NodeId::new("n1");
 
@@ -192,8 +198,11 @@ mod tests {
     #[tokio::test]
     async fn stop_completes_drain_when_last_machine_is_removed() {
         let state = AppState {
+            app_port: 3000,
             machines: Default::default(),
             nodes: Default::default(),
+            launched_workers: Default::default(),
+            launcher: Arc::new(NoopWorkerLauncher),
         };
         let node_id = NodeId::new("n1");
         let machine_id = MachineId::new();

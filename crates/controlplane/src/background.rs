@@ -23,14 +23,19 @@ pub fn spawn_reaper(state: AppState) -> tokio::task::JoinHandle<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::launcher::NoopWorkerLauncher;
     use common::{Node, NodeId};
+    use std::sync::Arc;
     use tokio::time::{self, Duration};
 
     #[tokio::test(start_paused = true)]
     async fn marks_stale_nodes() {
         let state = AppState {
+            app_port: 3000,
             machines: Default::default(),
             nodes: Default::default(),
+            launched_workers: Default::default(),
+            launcher: Arc::new(NoopWorkerLauncher),
         };
 
         let node_id = NodeId::new("n1");

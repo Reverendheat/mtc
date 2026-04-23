@@ -3,7 +3,6 @@ mod settings;
 
 use crate::background::spawn_heartbeat;
 use axum::{Router, routing::get};
-use common::NodeId;
 use reqwest::Client;
 use settings::Settings;
 use tracing::info;
@@ -14,9 +13,8 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let settings: Settings = Settings::new();
-
     let client = Client::new();
-    let node_id = NodeId::new("worker-node-1");
+    let node_id = settings.node_id.clone();
 
     client
         .post(format!("{}/workers/register", settings.control_plane_url))
