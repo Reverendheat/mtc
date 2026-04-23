@@ -2,9 +2,9 @@ mod background;
 mod settings;
 
 use crate::background::spawn_heartbeat;
-use axum::{Router, routing::get};
 use reqwest::Client;
 use settings::Settings;
+use std::future::pending;
 use tracing::info;
 use tracing_subscriber;
 
@@ -31,22 +31,6 @@ async fn main() {
         settings.control_plane_url.clone(),
     );
 
-    let app = Router::new().route(
-        "/",
-        get({
-            let node_id = node_id.clone();
-            move || async move { format!("Worker Node {}", node_id) }
-        }),
-    );
-
-    info!(
-        "Starting worker node '{}' on port {}",
-        node_id, settings.app_port
-    );
-
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", settings.app_port))
-        .await
-        .unwrap();
-
-    axum::serve(listener, app).await.unwrap();
+    info!("Starting worker node '{}'", node_id);
+    pending::<()>().await;
 }

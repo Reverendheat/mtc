@@ -70,12 +70,21 @@ The control plane now has a launcher abstraction with a local-process backend.
 The local launcher currently passes instance specific environment to each worker:
 
 - `NODE_ID`
-- `APP_PORT`
 - `CONTROL_PLANE_URL`
 
 `CONTROL_PLANE_URL` is derived automatically from the control plane's own `APP_PORT` for the local launcher.
 
 By default, the control plane looks for the worker binary next to the control plane binary. You can override that with `WORKER_BINARY_PATH`.
+
+## SPA
+
+The control plane now also serves a tiny buildless SPA.
+
+- `GET /` serves the node dashboard
+- `GET /api/nodes` returns the current node list with launch metadata when available
+- `POST /api/nodes` launches a new worker node for the SPA
+
+The frontend itself lives in plain files under [crates/controlplane/ui/index.html](/Users/brandonsharp/Projects/mtc/crates/controlplane/ui/index.html), [crates/controlplane/ui/styles.css](/Users/brandonsharp/Projects/mtc/crates/controlplane/ui/styles.css), and [crates/controlplane/ui/app.js](/Users/brandonsharp/Projects/mtc/crates/controlplane/ui/app.js).
 
 ## Workspace layout
 

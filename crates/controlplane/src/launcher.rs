@@ -11,14 +11,12 @@ use tokio::sync::Mutex;
 #[derive(Debug, Clone)]
 pub struct WorkerLaunchSpec {
     pub node_id: NodeId,
-    pub app_port: u16,
     pub control_plane_url: String,
 }
 
 #[allow(dead_code)]
 pub struct LaunchedWorker {
     pub node_id: NodeId,
-    pub app_port: u16,
     pub launched_at: SystemTime,
     pub process_id: Option<u32>,
     pub backend: &'static str,
@@ -56,7 +54,6 @@ impl WorkerLauncher for LocalProcessLauncher {
     async fn launch(&self, spec: WorkerLaunchSpec) -> Result<LaunchedWorker> {
         let child = Command::new(&self.worker_binary_path)
             .env("NODE_ID", spec.node_id.as_str())
-            .env("APP_PORT", spec.app_port.to_string())
             .env("CONTROL_PLANE_URL", &spec.control_plane_url)
             .spawn()
             .with_context(|| {
@@ -70,7 +67,6 @@ impl WorkerLauncher for LocalProcessLauncher {
 
         Ok(LaunchedWorker {
             node_id: spec.node_id,
-            app_port: spec.app_port,
             launched_at: SystemTime::now(),
             process_id,
             backend: self.backend_name(),
@@ -99,18 +95,6 @@ fn worker_binary_name() -> &'static str {
     }
 }
 
-pub async fn allocate_worker_port() -> Result<u16> {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .context("failed to allocate a local port for worker")?;
-    let port = listener
-        .local_addr()
-        .context("failed to inspect allocated worker port")?
-        .port();
-    drop(listener);
-    Ok(port)
-}
-
 #[cfg(test)]
 pub struct NoopWorkerLauncher;
 
@@ -130,7 +114,6 @@ impl WorkerLauncher for NoopWorkerLauncher {
 
         Ok(LaunchedWorker {
             node_id: spec.node_id,
-            app_port: spec.app_port,
             launched_at: SystemTime::now(),
             process_id: child.id(),
             backend: "noop",

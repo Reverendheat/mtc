@@ -1,5 +1,5 @@
 use crate::router::state::AppState;
-use axum::extract::{Query, State};
+use axum::extract::{Json as ExtractJson, Path, Query, State};
 use axum::{Json, Router, routing::post};
 use common::{Node, NodeId, NodeState};
 use serde::{Deserialize, Serialize};
@@ -19,17 +19,27 @@ struct NodeActionParams {
 #[derive(Debug, Deserialize)]
 struct LaunchWorkerParams {
     node_id: Option<NodeId>,
-    app_port: Option<u16>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LaunchWorkerRequest {
+    node_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct LaunchWorkerResponse {
     node_id: NodeId,
-    app_port: u16,
+    app_port: Option<u16>,
     backend: &'static str,
     process_id: Option<u32>,
     observed_state: NodeState,
     desired_state: NodeState,
+}
+
+#[derive(Debug, Serialize)]
+struct NodeMutationResponse {
+    node_id: NodeId,
+    message: String,
 }
 
 async fn register_handler(
@@ -152,12 +162,6 @@ async fn launch_handler(
     let node_id = params
         .node_id
         .unwrap_or_else(|| NodeId::new(format!("worker-node-{}", short_id())));
-    let app_port = match params.app_port {
-        Some(app_port) => app_port,
-        None => crate::launcher::allocate_worker_port()
-            .await
-            .map_err(internal_error)?,
-    };
     let placeholder = Node {
         id: node_id.clone(),
         name: format!("Node-{}", node_id.as_str()),
@@ -183,7 +187,6 @@ async fn launch_handler(
         .launcher
         .launch(crate::launcher::WorkerLaunchSpec {
             node_id: node_id.clone(),
-            app_port,
             control_plane_url: format!("http://127.0.0.1:{}", state.app_port),
         })
         .await;
@@ -200,7 +203,7 @@ async fn launch_handler(
 
             Ok(Json(LaunchWorkerResponse {
                 node_id,
-                app_port,
+                app_port: None,
                 backend,
                 process_id,
                 observed_state: NodeState::Pending,
@@ -214,8 +217,70 @@ async fn launch_handler(
     }
 }
 
+async fn launch_from_json_handler(
+    State(state): State<AppState>,
+    ExtractJson(payload): ExtractJson<LaunchWorkerRequest>,
+) -> Result<Json<LaunchWorkerResponse>, (axum::http::StatusCode, String)> {
+    let params = LaunchWorkerParams {
+        node_id: payload.node_id.map(NodeId::new),
+    };
+
+    launch_handler(State(state), Query(params)).await
+}
+
+async fn stop_node_handler(
+    State(state): State<AppState>,
+    Path(node_id): Path<String>,
+) -> Result<Json<NodeMutationResponse>, (axum::http::StatusCode, String)> {
+    let node_id = NodeId::new(node_id);
+
+    let machine_count = state
+        .machines
+        .lock()
+        .await
+        .values()
+        .filter(|machine| machine.node_id == node_id)
+        .count();
+
+    if machine_count > 0 {
+        return Err((
+            axum::http::StatusCode::CONFLICT,
+            format!(
+                "Cannot stop node '{}' while {} machine(s) are still assigned",
+                node_id, machine_count
+            ),
+        ));
+    }
+
+    let removed_node = state.nodes.lock().await.remove(&node_id);
+    if removed_node.is_none() {
+        return Err((
+            axum::http::StatusCode::NOT_FOUND,
+            format!("Node '{}' not found", node_id),
+        ));
+    }
+
+    let launched_worker = state.launched_workers.lock().await.remove(&node_id);
+
+    if let Some(mut launched_worker) = launched_worker {
+        launched_worker.child.kill().await.map_err(internal_error)?;
+
+        Ok(Json(NodeMutationResponse {
+            node_id,
+            message: "Worker stopped".to_string(),
+        }))
+    } else {
+        Ok(Json(NodeMutationResponse {
+            node_id,
+            message: "Node deregistered".to_string(),
+        }))
+    }
+}
+
 pub fn nodes_router() -> Router<AppState> {
     Router::new()
+        .route("/api/nodes", post(launch_from_json_handler))
+        .route("/api/nodes/{node_id}/stop", post(stop_node_handler))
         .route("/workers/launch", post(launch_handler))
         .route("/workers/register", post(register_handler))
         .route("/workers/deregister", post(deregister_handler))
@@ -261,6 +326,18 @@ mod tests {
         launches: Arc<Mutex<Vec<WorkerLaunchSpec>>>,
     }
 
+    fn spawn_test_child() -> tokio::process::Child {
+        if cfg!(windows) {
+            let mut command = Command::new("cmd");
+            command.args(["/C", "ping", "127.0.0.1", "-n", "30", ">", "NUL"]);
+            command.spawn().unwrap()
+        } else {
+            let mut command = Command::new("sh");
+            command.args(["-c", "sleep 30"]);
+            command.spawn().unwrap()
+        }
+    }
+
     #[async_trait]
     impl WorkerLauncher for FakeLauncher {
         async fn launch(&self, spec: WorkerLaunchSpec) -> anyhow::Result<LaunchedWorker> {
@@ -278,7 +355,6 @@ mod tests {
 
             Ok(LaunchedWorker {
                 node_id: spec.node_id,
-                app_port: spec.app_port,
                 launched_at: SystemTime::now(),
                 process_id: child.id(),
                 backend: "fake",
@@ -384,7 +460,6 @@ mod tests {
             State(state.clone()),
             Query(LaunchWorkerParams {
                 node_id: Some(node_id.clone()),
-                app_port: Some(4010),
             }),
         )
         .await
@@ -393,6 +468,7 @@ mod tests {
 
         assert_eq!(response.node_id, node_id);
         assert_eq!(response.backend, "fake");
+        assert_eq!(response.app_port, None);
         assert_eq!(response.observed_state, NodeState::Pending);
         assert_eq!(response.desired_state, NodeState::Running);
 
@@ -409,5 +485,84 @@ mod tests {
         let launch_specs = launches.lock().await;
         assert_eq!(launch_specs.len(), 1);
         assert_eq!(launch_specs[0].node_id, node_id);
+    }
+
+    #[tokio::test]
+    async fn stop_node_kills_launched_worker_and_removes_node() {
+        let state = test_state(Arc::new(FakeLauncher {
+            launches: Arc::new(Mutex::new(Vec::new())),
+        }));
+        let node_id = NodeId::new("n-stop");
+
+        {
+            let mut nodes = state.nodes.lock().await;
+            nodes.insert(
+                node_id.clone(),
+                Node {
+                    id: node_id.clone(),
+                    name: "n-stop".into(),
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
+                    cordoned: false,
+                    draining: false,
+                    last_heartbeat: tokio::time::Instant::now(),
+                },
+            );
+        }
+
+        {
+            let mut launched_workers = state.launched_workers.lock().await;
+            launched_workers.insert(
+                node_id.clone(),
+                LaunchedWorker {
+                    node_id: node_id.clone(),
+                    launched_at: SystemTime::now(),
+                    process_id: None,
+                    backend: "fake",
+                    child: spawn_test_child(),
+                },
+            );
+        }
+
+        let response = stop_node_handler(State(state.clone()), Path(node_id.as_str().to_string()))
+            .await
+            .unwrap()
+            .0;
+
+        assert_eq!(response.message, "Worker stopped");
+        assert!(state.nodes.lock().await.get(&node_id).is_none());
+        assert!(state.launched_workers.lock().await.get(&node_id).is_none());
+    }
+
+    #[tokio::test]
+    async fn stop_node_deregisters_manual_node() {
+        let state = test_state(Arc::new(FakeLauncher {
+            launches: Arc::new(Mutex::new(Vec::new())),
+        }));
+        let node_id = NodeId::new("manual-node");
+
+        {
+            let mut nodes = state.nodes.lock().await;
+            nodes.insert(
+                node_id.clone(),
+                Node {
+                    id: node_id.clone(),
+                    name: "manual-node".into(),
+                    observed_state: NodeState::Stale,
+                    desired_state: NodeState::Running,
+                    cordoned: false,
+                    draining: false,
+                    last_heartbeat: tokio::time::Instant::now(),
+                },
+            );
+        }
+
+        let response = stop_node_handler(State(state.clone()), Path(node_id.as_str().to_string()))
+            .await
+            .unwrap()
+            .0;
+
+        assert_eq!(response.message, "Node deregistered");
+        assert!(state.nodes.lock().await.get(&node_id).is_none());
     }
 }

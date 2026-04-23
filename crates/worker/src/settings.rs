@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub node_id: NodeId,
-    pub app_port: u16,
     pub control_plane_url: String,
 }
 

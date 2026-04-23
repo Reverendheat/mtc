@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MTC Node Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-a"></div>
+    <div class="backdrop backdrop-b"></div>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">MTC</p>
+        <h1>Node Console</h1>
+        <p class="lede">
+          A tiny single-page control surface for viewing the cluster and launching
+          fresh worker nodes.
+        </p>
+      </section>
+
+      <section class="panel launch-panel">
+        <div class="panel-copy">
+          <p class="panel-kicker">Launch worker</p>
+          <h2>Spin up another node</h2>
+          <p>
+            Leave the node id blank to let the control plane generate one for you.
+          </p>
+        </div>
+
+        <form id="launch-form" class="launch-form">
+          <label for="node-id">Node ID</label>
+          <input
+            id="node-id"
+            name="node-id"
+            type="text"
+            autocomplete="off"
+            placeholder="worker-node-..."
+          />
+          <button id="launch-button" type="submit">Launch Node</button>
+        </form>
+      </section>
+
+      <section class="summary-grid" id="summary-grid">
+        <article class="summary-card">
+          <span class="summary-label">Nodes</span>
+          <strong id="summary-total">0</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Running</span>
+          <strong id="summary-running">0</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Pending</span>
+          <strong id="summary-pending">0</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Cordoned</span>
+          <strong id="summary-cordoned">0</strong>
+        </article>
+      </section>
+
+      <section class="panel status-panel">
+        <div>
+          <p class="panel-kicker">Cluster status</p>
+          <h2>Live node view</h2>
+        </div>
+        <div class="status-actions">
+          <span id="status-line" class="status-line">Loading nodes...</span>
+          <button id="refresh-button" type="button" class="ghost-button">Refresh</button>
+        </div>
+      </section>
+
+      <section id="node-grid" class="node-grid" aria-live="polite"></section>
+    </main>
+
+    <template id="node-card-template">
+      <article class="panel node-card">
+        <div class="node-header">
+          <div>
+            <p class="node-name"></p>
+            <p class="node-id"></p>
+          </div>
+          <span class="state-chip"></span>
+        </div>
+        <div class="meta-grid">
+          <div>
+            <span class="meta-label">Desired</span>
+            <strong class="desired-state"></strong>
+          </div>
+          <div>
+            <span class="meta-label">Machines</span>
+            <strong class="machine-count"></strong>
+          </div>
+          <div>
+            <span class="meta-label">Port</span>
+            <strong class="app-port"></strong>
+          </div>
+          <div>
+            <span class="meta-label">Process</span>
+            <strong class="process-id"></strong>
+          </div>
+        </div>
+        <div class="pill-row">
+          <span class="pill backend-pill"></span>
+          <span class="pill cordon-pill is-hidden">Cordoned</span>
+          <span class="pill drain-pill is-hidden">Draining</span>
+        </div>
+        <div class="card-actions">
+          <button type="button" class="card-button stop-button"></button>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
