@@ -16,6 +16,10 @@ A worker represents a node in the cluster.
 
 A machine represents a launched workload assigned to a node.
 
+Machines can now carry a shell command. The control plane stores the assignment, the target worker polls for pending work, claims it, runs it locally, and reports back the final state, exit code, stdout, and stderr.
+
+Workers now explicitly advertise whether they support machine execution when they register. The scheduler only assigns command machines to nodes that report that capability, which prevents older heartbeat-only workers from accepting work they cannot run.
+
 ## Current status
 
 This project is very much a work in progress.
@@ -29,11 +33,11 @@ Things being explored right now:
 - in-memory node and machine state
 - node cordon / drain lifecycle
 - local worker launching from the control plane
+- one-shot command execution on worker nodes
 - basic CLI shape
 
 Things that are **not** done yet:
 
-- real process launching
 - durable state
 - machine reconciliation
 - scheduling beyond simple/random assignment
@@ -83,8 +87,19 @@ The control plane now also serves a tiny buildless SPA.
 - `GET /` serves the node dashboard
 - `GET /api/nodes` returns the current node list with launch metadata when available
 - `POST /api/nodes` launches a new worker node for the SPA
+- `GET /api/machines` returns stored machine runs with command output
+- `POST /api/machines` launches a one-shot command machine from the SPA
 
 The frontend itself lives in plain files under [crates/controlplane/ui/index.html](/Users/brandonsharp/Projects/mtc/crates/controlplane/ui/index.html), [crates/controlplane/ui/styles.css](/Users/brandonsharp/Projects/mtc/crates/controlplane/ui/styles.css), and [crates/controlplane/ui/app.js](/Users/brandonsharp/Projects/mtc/crates/controlplane/ui/app.js).
+
+## Runtime note
+
+Commands currently run directly on the worker host via the platform shell:
+
+- Unix-like systems use `sh -lc`
+- Windows uses `cmd /C`
+
+That keeps the runtime tiny while we validate the end-to-end control flow. If we want stronger isolation next, Docker is a natural follow-up backend behind the same machine execution boundary.
 
 ## Workspace layout
 

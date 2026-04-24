@@ -39,20 +39,25 @@ impl Display for MachineId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MachineState {
     Pending,
     Running,
+    Succeeded,
     Stopped,
     Failed,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Machine {
     pub id: String,
     pub name: String,
     pub node_id: NodeId,
     pub state: MachineState,
+    pub command: String,
+    pub exit_code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
 }
 
 impl Display for Machine {
@@ -79,6 +84,7 @@ pub struct Node {
     pub name: String,
     pub observed_state: NodeState,
     pub desired_state: NodeState,
+    pub supports_machine_execution: bool,
     pub cordoned: bool,
     pub draining: bool,
     pub last_heartbeat: tokio::time::Instant,
@@ -88,6 +94,7 @@ impl Node {
     pub fn is_schedulable(&self) -> bool {
         self.observed_state == NodeState::Running
             && self.desired_state == NodeState::Running
+            && self.supports_machine_execution
             && !self.cordoned
             && !self.draining
     }

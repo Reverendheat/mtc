@@ -50,6 +50,7 @@ mod tests {
                     last_heartbeat: tokio::time::Instant::now(),
                     observed_state: NodeState::Running,
                     desired_state: NodeState::Running,
+                    supports_machine_execution: true,
                     cordoned: false,
                     draining: false,
                 },

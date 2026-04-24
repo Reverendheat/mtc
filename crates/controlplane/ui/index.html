@@ -15,7 +15,7 @@
         <h1>Node Console</h1>
         <p class="lede">
           A tiny single-page control surface for viewing the cluster and launching
-          fresh worker nodes.
+          fresh worker nodes and one-shot command machines.
         </p>
       </section>
 
@@ -72,6 +72,62 @@
       </section>
 
       <section id="node-grid" class="node-grid" aria-live="polite"></section>
+
+      <section class="panel machine-panel">
+        <div class="panel-copy">
+          <p class="panel-kicker">Launch machine</p>
+          <h2>Run a command on a node</h2>
+          <p>
+            Pick a node or leave it blank for auto-placement. Commands run once and
+            keep their stdout and stderr in the control plane.
+          </p>
+        </div>
+
+        <form id="machine-form" class="machine-form">
+          <div>
+            <label for="machine-name">Machine name</label>
+            <input
+              id="machine-name"
+              name="machine-name"
+              type="text"
+              autocomplete="off"
+              placeholder="demo-job"
+              required
+            />
+          </div>
+          <div>
+            <label for="machine-command">Command</label>
+            <input
+              id="machine-command"
+              name="machine-command"
+              type="text"
+              autocomplete="off"
+              placeholder="echo hello from $(hostname)"
+              required
+            />
+          </div>
+          <div>
+            <label for="machine-node-id">Target node (optional)</label>
+            <input
+              id="machine-node-id"
+              name="machine-node-id"
+              type="text"
+              autocomplete="off"
+              placeholder="worker-node-..."
+            />
+          </div>
+          <button id="machine-button" type="submit">Launch Machine</button>
+        </form>
+      </section>
+
+      <section class="panel status-panel">
+        <div>
+          <p class="panel-kicker">Machine status</p>
+          <h2>Recent command runs</h2>
+        </div>
+      </section>
+
+      <section id="machine-grid" class="machine-grid" aria-live="polite"></section>
     </main>
 
     <template id="node-card-template">
@@ -93,6 +149,10 @@
             <strong class="machine-count"></strong>
           </div>
           <div>
+            <span class="meta-label">Exec</span>
+            <strong class="execution-support"></strong>
+          </div>
+          <div>
             <span class="meta-label">Port</span>
             <strong class="app-port"></strong>
           </div>
@@ -108,6 +168,42 @@
         </div>
         <div class="card-actions">
           <button type="button" class="card-button stop-button"></button>
+        </div>
+      </article>
+    </template>
+
+    <template id="machine-card-template">
+      <article class="panel machine-card">
+        <div class="node-header">
+          <div>
+            <p class="node-name machine-name"></p>
+            <p class="node-id machine-id"></p>
+          </div>
+          <span class="state-chip machine-state"></span>
+        </div>
+        <div class="meta-grid">
+          <div>
+            <span class="meta-label">Node</span>
+            <strong class="machine-node"></strong>
+          </div>
+          <div>
+            <span class="meta-label">Exit code</span>
+            <strong class="machine-exit-code"></strong>
+          </div>
+        </div>
+        <div class="command-block">
+          <span class="meta-label">Command</span>
+          <code class="machine-command"></code>
+        </div>
+        <div class="output-stack">
+          <div class="output-block">
+            <span class="meta-label">Stdout</span>
+            <pre class="machine-stdout"></pre>
+          </div>
+          <div class="output-block">
+            <span class="meta-label">Stderr</span>
+            <pre class="machine-stderr"></pre>
+          </div>
         </div>
       </article>
     </template>

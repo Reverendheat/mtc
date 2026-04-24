@@ -1,7 +1,7 @@
 mod background;
 mod settings;
 
-use crate::background::spawn_heartbeat;
+use crate::background::{spawn_heartbeat, spawn_machine_runner};
 use reqwest::Client;
 use settings::Settings;
 use std::future::pending;
@@ -18,7 +18,10 @@ async fn main() {
 
     client
         .post(format!("{}/workers/register", settings.control_plane_url))
-        .query(&[("node_id", node_id.as_str())])
+        .query(&[
+            ("node_id", node_id.as_str()),
+            ("supports_machine_execution", "true"),
+        ])
         .send()
         .await
         .unwrap()
@@ -26,6 +29,11 @@ async fn main() {
         .unwrap();
 
     let _heartbeat = spawn_heartbeat(
+        client.clone(),
+        node_id.clone(),
+        settings.control_plane_url.clone(),
+    );
+    let _runner = spawn_machine_runner(
         client.clone(),
         node_id.clone(),
         settings.control_plane_url.clone(),

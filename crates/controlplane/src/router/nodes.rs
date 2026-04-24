@@ -12,6 +12,12 @@ struct HeartbeatParams {
 }
 
 #[derive(Debug, Deserialize)]
+struct RegisterParams {
+    node_id: NodeId,
+    supports_machine_execution: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
 struct NodeActionParams {
     node_id: NodeId,
 }
@@ -44,16 +50,18 @@ struct NodeMutationResponse {
 
 async fn register_handler(
     state: State<AppState>,
-    Query(params): Query<HeartbeatParams>,
+    Query(params): Query<RegisterParams>,
 ) -> &'static str {
     info!("Registering worker '{}'", params.node_id.as_str());
     let mut nodes = state.nodes.lock().await;
+    let supports_machine_execution = params.supports_machine_execution.unwrap_or(false);
 
     if let Some(node) = nodes.get_mut(&params.node_id) {
         let was_pending = node.observed_state == NodeState::Pending;
         node.last_heartbeat = tokio::time::Instant::now();
         node.observed_state = NodeState::Running;
         node.desired_state = NodeState::Running;
+        node.supports_machine_execution = supports_machine_execution;
 
         if was_pending {
             info!("Registered worker '{}'", params.node_id.as_str());
@@ -67,6 +75,7 @@ async fn register_handler(
             name: format!("Node-{}", params.node_id.as_str()),
             observed_state: NodeState::Running,
             desired_state: NodeState::Running,
+            supports_machine_execution,
             cordoned: false,
             draining: false,
             last_heartbeat: tokio::time::Instant::now(),
@@ -167,6 +176,7 @@ async fn launch_handler(
         name: format!("Node-{}", node_id.as_str()),
         observed_state: NodeState::Pending,
         desired_state: NodeState::Running,
+        supports_machine_execution: false,
         cordoned: false,
         draining: false,
         last_heartbeat: tokio::time::Instant::now(),
@@ -383,6 +393,7 @@ mod tests {
                     name: "n1".into(),
                     observed_state: NodeState::Stale,
                     desired_state: NodeState::Running,
+                    supports_machine_execution: true,
                     cordoned: true,
                     draining: true,
                     last_heartbeat: tokio::time::Instant::now(),
@@ -424,6 +435,7 @@ mod tests {
                     name: "n1".into(),
                     observed_state: NodeState::Running,
                     desired_state: NodeState::Running,
+                    supports_machine_execution: true,
                     cordoned: false,
                     draining: false,
                     last_heartbeat: tokio::time::Instant::now(),
@@ -503,6 +515,7 @@ mod tests {
                     name: "n-stop".into(),
                     observed_state: NodeState::Running,
                     desired_state: NodeState::Running,
+                    supports_machine_execution: true,
                     cordoned: false,
                     draining: false,
                     last_heartbeat: tokio::time::Instant::now(),
@@ -550,6 +563,7 @@ mod tests {
                     name: "manual-node".into(),
                     observed_state: NodeState::Stale,
                     desired_state: NodeState::Running,
+                    supports_machine_execution: false,
                     cordoned: false,
                     draining: false,
                     last_heartbeat: tokio::time::Instant::now(),

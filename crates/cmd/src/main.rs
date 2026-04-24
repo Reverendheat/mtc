@@ -15,6 +15,13 @@ fn cli() -> Command {
                         .action(ArgAction::Set),
                 )
                 .arg(
+                    Arg::new("command")
+                        .long("command")
+                        .help("Shell command to run for the machine")
+                        .required(true)
+                        .action(ArgAction::Set),
+                )
+                .arg(
                     Arg::new("node-id")
                         .long("node-id")
                         .help("Target node id")
@@ -49,10 +56,17 @@ fn main() {
     match matches.subcommand() {
         Some(("launch", launch_matches)) => {
             let name = launch_matches.get_one::<String>("name").unwrap();
+            let command = launch_matches.get_one::<String>("command").unwrap();
             let node_id = launch_matches.get_one::<String>("node-id");
             match node_id {
-                Some(node_id) => println!("Launching {} on node {}", name, node_id),
-                None => println!("Launching {} on auto-assigned node", name),
+                Some(node_id) => println!(
+                    "Launching {} on node {} with command {:?}",
+                    name, node_id, command
+                ),
+                None => println!(
+                    "Launching {} on auto-assigned node with command {:?}",
+                    name, command
+                ),
             }
             // Here you would add the logic to actually launch the machine
         }
