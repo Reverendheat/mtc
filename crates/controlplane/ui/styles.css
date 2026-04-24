@@ -18,7 +18,7 @@
 body {
     margin: 0;
     min-height: 100vh;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: "Futura", "Trebuchet MS", Arial, sans-serif;
     color: var(--ink);
     position: relative;
     overflow-x: hidden;
@@ -29,7 +29,6 @@ body {
     inset: auto;
     width: 28rem;
     height: 28rem;
-    border-radius: 999px;
     filter: blur(44px);
     opacity: 0.45;
     pointer-events: none;
@@ -43,7 +42,6 @@ body {
 .backdrop-b {
     bottom: -10rem;
     left: -10rem;
-    background: rgba(31, 114, 102, 0.2);
 }
 
 .shell {
@@ -91,7 +89,6 @@ body {
 .panel {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 1.5rem;
     box-shadow: var(--shadow);
     backdrop-filter: blur(18px);
 }
@@ -143,16 +140,13 @@ body {
 .machine-form input {
     width: 100%;
     padding: 0.95rem 1rem;
-    border-radius: 999px;
     border: 1px solid rgba(21, 33, 38, 0.12);
-    background: rgba(255, 255, 255, 0.8);
     color: var(--ink);
     font: inherit;
 }
 
 button {
     border: 0;
-    border-radius: 999px;
     padding: 0.95rem 1.25rem;
     font: inherit;
     cursor: pointer;
@@ -173,19 +167,19 @@ button:disabled {
 }
 
 #launch-button {
-    background: linear-gradient(135deg, var(--ink), #274651);
     color: white;
+    background-color: black;
     box-shadow: 0 14px 28px rgba(21, 33, 38, 0.18);
 }
 
 #machine-button {
-    background: linear-gradient(135deg, var(--teal), #2c8c7b);
     color: white;
+    background-color: black;
     box-shadow: 0 14px 28px rgba(31, 114, 102, 0.18);
 }
 
 #machine-button[data-blocked="true"]:not(:disabled) {
-    background: linear-gradient(135deg, #8c6d32, #b08a46);
+    background: black;
     box-shadow: 0 14px 28px rgba(176, 138, 70, 0.18);
 }
 
@@ -203,7 +197,6 @@ button:disabled {
 
 .summary-card {
     padding: 1.1rem 1.2rem;
-    border-radius: 1.25rem;
     background: rgba(255, 255, 255, 0.6);
     border: 1px solid rgba(21, 33, 38, 0.08);
 }
@@ -262,7 +255,6 @@ button:disabled {
     inset: auto -3rem -3rem auto;
     width: 8rem;
     height: 8rem;
-    border-radius: 999px;
     background: radial-gradient(
         circle,
         rgba(203, 92, 56, 0.16),
@@ -294,7 +286,6 @@ button:disabled {
 .state-chip {
     display: inline-flex;
     align-items: center;
-    border-radius: 999px;
     padding: 0.42rem 0.72rem;
     font-size: 0.78rem;
     text-transform: uppercase;
@@ -371,7 +362,6 @@ button:disabled {
 .pill {
     display: inline-flex;
     align-items: center;
-    border-radius: 999px;
     padding: 0.45rem 0.7rem;
     background: rgba(21, 33, 38, 0.07);
     color: var(--muted);
@@ -405,7 +395,6 @@ button:disabled {
     display: block;
     margin: 0.4rem 0 0;
     padding: 0.9rem 1rem;
-    border-radius: 1rem;
     background: rgba(21, 33, 38, 0.06);
     border: 1px solid rgba(21, 33, 38, 0.06);
     color: var(--ink);
