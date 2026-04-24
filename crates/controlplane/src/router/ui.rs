@@ -49,6 +49,7 @@ async fn list_nodes_handler(State(state): State<AppState>) -> Json<Vec<NodeSumma
 
     let machine_counts = machines
         .values()
+        .filter(|machine| machine.state.is_active())
         .fold(HashMap::new(), |mut counts, machine| {
             *counts
                 .entry(machine.node_id.as_str().to_string())

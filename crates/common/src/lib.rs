@@ -48,6 +48,12 @@ pub enum MachineState {
     Failed,
 }
 
+impl MachineState {
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Pending | Self::Running)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Machine {
     pub id: String,

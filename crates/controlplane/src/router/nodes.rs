@@ -158,10 +158,10 @@ async fn drain_handler(state: State<AppState>, Query(params): Query<NodeActionPa
     let machines = state.machines.lock().await;
     let machine_count = machines
         .values()
-        .filter(|machine| machine.node_id == params.node_id)
+        .filter(|machine| machine.node_id == params.node_id && machine.state.is_active())
         .count();
 
-    format!("Node draining; {} machine(s) still assigned", machine_count)
+    format!("Node draining; {} active machine(s) still assigned", machine_count)
 }
 
 async fn launch_handler(
@@ -249,14 +249,14 @@ async fn stop_node_handler(
         .lock()
         .await
         .values()
-        .filter(|machine| machine.node_id == node_id)
+        .filter(|machine| machine.node_id == node_id && machine.state.is_active())
         .count();
 
     if machine_count > 0 {
         return Err((
             axum::http::StatusCode::CONFLICT,
             format!(
-                "Cannot stop node '{}' while {} machine(s) are still assigned",
+                "Cannot stop node '{}' while {} active machine(s) are still assigned",
                 node_id, machine_count
             ),
         ));
@@ -451,7 +451,7 @@ mod tests {
         )
         .await;
 
-        assert_eq!(response, "Node draining; 0 machine(s) still assigned");
+        assert_eq!(response, "Node draining; 0 active machine(s) still assigned");
 
         let nodes = state.nodes.lock().await;
         let node = nodes.get(&node_id).unwrap();
@@ -545,6 +545,112 @@ mod tests {
         assert_eq!(response.message, "Worker stopped");
         assert!(state.nodes.lock().await.get(&node_id).is_none());
         assert!(state.launched_workers.lock().await.get(&node_id).is_none());
+    }
+
+    #[tokio::test]
+    async fn stop_node_allows_completed_machines() {
+        let state = test_state(Arc::new(FakeLauncher {
+            launches: Arc::new(Mutex::new(Vec::new())),
+        }));
+        let node_id = NodeId::new("n-complete");
+
+        {
+            let mut nodes = state.nodes.lock().await;
+            nodes.insert(
+                node_id.clone(),
+                Node {
+                    id: node_id.clone(),
+                    name: "n-complete".into(),
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
+                    supports_machine_execution: true,
+                    cordoned: false,
+                    draining: false,
+                    last_heartbeat: tokio::time::Instant::now(),
+                },
+            );
+        }
+
+        {
+            let mut machines = state.machines.lock().await;
+            machines.insert(
+                common::MachineId::new(),
+                common::Machine {
+                    id: "done-machine".into(),
+                    name: "done-machine".into(),
+                    node_id: node_id.clone(),
+                    state: common::MachineState::Succeeded,
+                    command: "echo ok".into(),
+                    exit_code: Some(0),
+                    stdout: "ok".into(),
+                    stderr: String::new(),
+                },
+            );
+        }
+
+        let response = stop_node_handler(State(state.clone()), Path(node_id.as_str().to_string()))
+            .await
+            .unwrap()
+            .0;
+
+        assert_eq!(response.message, "Node deregistered");
+        assert!(state.nodes.lock().await.get(&node_id).is_none());
+    }
+
+    #[tokio::test]
+    async fn stop_node_rejects_active_machines() {
+        let state = test_state(Arc::new(FakeLauncher {
+            launches: Arc::new(Mutex::new(Vec::new())),
+        }));
+        let node_id = NodeId::new("n-active");
+
+        {
+            let mut nodes = state.nodes.lock().await;
+            nodes.insert(
+                node_id.clone(),
+                Node {
+                    id: node_id.clone(),
+                    name: "n-active".into(),
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
+                    supports_machine_execution: true,
+                    cordoned: false,
+                    draining: false,
+                    last_heartbeat: tokio::time::Instant::now(),
+                },
+            );
+        }
+
+        {
+            let mut machines = state.machines.lock().await;
+            machines.insert(
+                common::MachineId::new(),
+                common::Machine {
+                    id: "active-machine".into(),
+                    name: "active-machine".into(),
+                    node_id: node_id.clone(),
+                    state: common::MachineState::Running,
+                    command: "sleep 1".into(),
+                    exit_code: None,
+                    stdout: String::new(),
+                    stderr: String::new(),
+                },
+            );
+        }
+
+        let (status, message) = stop_node_handler(
+            State(state.clone()),
+            Path(node_id.as_str().to_string()),
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(status, axum::http::StatusCode::CONFLICT);
+        assert_eq!(
+            message,
+            "Cannot stop node 'n-active' while 1 active machine(s) are still assigned"
+        );
+        assert!(state.nodes.lock().await.get(&node_id).is_some());
     }
 
     #[tokio::test]

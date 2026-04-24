@@ -199,11 +199,21 @@ fn shell_command(command: &str) -> Command {
     if cfg!(windows) {
         let mut process = Command::new("cmd");
         process.args(["/C", command]);
+        process.env("PATH", default_command_path());
         process
     } else {
-        let mut process = Command::new("sh");
+        let mut process = Command::new("/bin/sh");
         process.args(["-lc", command]);
+        process.env("PATH", default_command_path());
         process
+    }
+}
+
+fn default_command_path() -> &'static str {
+    if cfg!(windows) {
+        r"C:\Windows\System32;C:\Windows;C:\Windows\System32\Wbem"
+    } else {
+        "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
     }
 }
 
@@ -218,5 +228,18 @@ mod tests {
         assert_eq!(result.exit_code, Some(0));
         assert_eq!(result.stdout, "hello");
         assert_eq!(result.stderr, "");
+    }
+
+    #[tokio::test]
+    async fn run_command_uses_default_command_path() {
+        if cfg!(windows) {
+            let result = run_command("where cmd").await;
+            assert_eq!(result.exit_code, Some(0));
+            assert!(result.stdout.to_lowercase().contains("cmd.exe"));
+        } else {
+            let result = run_command("command -v sh").await;
+            assert_eq!(result.exit_code, Some(0));
+            assert_eq!(result.stdout, "/bin/sh");
+        }
     }
 }

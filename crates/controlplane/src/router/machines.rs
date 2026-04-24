@@ -275,7 +275,7 @@ async fn stop_handler(
                 .lock()
                 .await
                 .values()
-                .filter(|m| m.node_id == machine_node_id)
+                .filter(|m| m.node_id == machine_node_id && m.state.is_active())
                 .count();
 
             let mut nodes = state.nodes.lock().await;
@@ -456,6 +456,27 @@ async fn worker_report_handler(
     machine.exit_code = payload.exit_code;
     machine.stdout = payload.stdout;
     machine.stderr = payload.stderr;
+    let machine_node_id = machine.node_id.clone();
+    let machine_is_active = machine.state.is_active();
+    drop(machines);
+
+    if !machine_is_active {
+        let remaining = state
+            .machines
+            .lock()
+            .await
+            .values()
+            .filter(|m| m.node_id == machine_node_id)
+            .filter(|m| m.state.is_active())
+            .count();
+
+        let mut nodes = state.nodes.lock().await;
+        if let Some(node) = nodes.get_mut(&machine_node_id) {
+            if node.draining && remaining == 0 {
+                node.draining = false;
+            }
+        }
+    }
 
     Ok(Json(MachineMutationResponse {
         machine_id: payload.machine_id.to_string(),
@@ -696,5 +717,71 @@ mod tests {
         assert_eq!(machine.state, MachineState::Succeeded);
         assert_eq!(machine.exit_code, Some(0));
         assert_eq!(machine.stdout, "ok");
+    }
+
+    #[tokio::test]
+    async fn worker_report_completes_drain_when_last_active_machine_finishes() {
+        let state = AppState {
+            app_port: 3000,
+            machines: Default::default(),
+            nodes: Default::default(),
+            launched_workers: Default::default(),
+            launcher: Arc::new(NoopWorkerLauncher),
+        };
+        let node_id = NodeId::new("n1");
+        let machine_id = MachineId::new();
+
+        {
+            let mut nodes = state.nodes.lock().await;
+            nodes.insert(
+                node_id.clone(),
+                Node {
+                    id: node_id.clone(),
+                    name: "n1".into(),
+                    observed_state: NodeState::Running,
+                    desired_state: NodeState::Running,
+                    supports_machine_execution: true,
+                    cordoned: true,
+                    draining: true,
+                    last_heartbeat: tokio::time::Instant::now(),
+                },
+            );
+        }
+
+        {
+            let mut machines = state.machines.lock().await;
+            machines.insert(
+                machine_id.clone(),
+                Machine {
+                    id: machine_id.as_str().to_string(),
+                    name: "machine-a".into(),
+                    node_id: node_id.clone(),
+                    state: MachineState::Running,
+                    command: "printf 'ok'".into(),
+                    exit_code: None,
+                    stdout: String::new(),
+                    stderr: String::new(),
+                },
+            );
+        }
+
+        let _ = worker_report_handler(
+            State(state.clone()),
+            ExtractJson(MachineReportRequest {
+                node_id: node_id.clone(),
+                machine_id,
+                state: MachineState::Succeeded,
+                exit_code: Some(0),
+                stdout: "ok".into(),
+                stderr: String::new(),
+            }),
+        )
+        .await
+        .unwrap();
+
+        let nodes = state.nodes.lock().await;
+        let node = nodes.get(&node_id).unwrap();
+        assert!(node.cordoned);
+        assert!(!node.draining);
     }
 }
