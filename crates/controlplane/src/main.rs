@@ -9,7 +9,6 @@ use crate::router::AppState;
 use settings::Settings;
 use std::sync::Arc;
 use tracing::info;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -161,7 +161,10 @@ async fn drain_handler(state: State<AppState>, Query(params): Query<NodeActionPa
         .filter(|machine| machine.node_id == params.node_id && machine.state.is_active())
         .count();
 
-    format!("Node draining; {} active machine(s) still assigned", machine_count)
+    format!(
+        "Node draining; {} active machine(s) still assigned",
+        machine_count
+    )
 }
 
 async fn launch_handler(
@@ -451,7 +454,10 @@ mod tests {
         )
         .await;
 
-        assert_eq!(response, "Node draining; 0 active machine(s) still assigned");
+        assert_eq!(
+            response,
+            "Node draining; 0 active machine(s) still assigned"
+        );
 
         let nodes = state.nodes.lock().await;
         let node = nodes.get(&node_id).unwrap();
@@ -638,12 +644,10 @@ mod tests {
             );
         }
 
-        let (status, message) = stop_node_handler(
-            State(state.clone()),
-            Path(node_id.as_str().to_string()),
-        )
-        .await
-        .unwrap_err();
+        let (status, message) =
+            stop_node_handler(State(state.clone()), Path(node_id.as_str().to_string()))
+                .await
+                .unwrap_err();
 
         assert_eq!(status, axum::http::StatusCode::CONFLICT);
         assert_eq!(

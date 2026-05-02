@@ -6,7 +6,6 @@ use reqwest::Client;
 use settings::Settings;
 use std::future::pending;
 use tracing::info;
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() {

@@ -279,10 +279,9 @@ async fn stop_handler(
                 .count();
 
             let mut nodes = state.nodes.lock().await;
-            if let Some(node) = nodes.get_mut(&machine_node_id) {
-                if node.draining && remaining == 0 {
-                    node.draining = false;
-                }
+            match nodes.get_mut(&machine_node_id) {
+                Some(node) if node.draining && remaining == 0 => node.draining = false,
+                _ => {}
             }
 
             Json(MachineMutationResponse {
@@ -309,7 +308,7 @@ async fn show_handler(State(state): State<AppState>, Query(params): Query<ShowPa
 
     match params.machine_id.as_ref() {
         Some(machine_id_str) => {
-            let machine_id = MachineId::from(machine_id_str.clone());
+            let machine_id = machine_id_str.clone();
 
             match map.get(&machine_id) {
                 Some(machine) => format!(
@@ -471,10 +470,9 @@ async fn worker_report_handler(
             .count();
 
         let mut nodes = state.nodes.lock().await;
-        if let Some(node) = nodes.get_mut(&machine_node_id) {
-            if node.draining && remaining == 0 {
-                node.draining = false;
-            }
+        match nodes.get_mut(&machine_node_id) {
+            Some(node) if node.draining && remaining == 0 => node.draining = false,
+            _ => {}
         }
     }
 

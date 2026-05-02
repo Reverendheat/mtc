@@ -33,6 +33,12 @@ impl MachineId {
     }
 }
 
+impl Default for MachineId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Display for MachineId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
